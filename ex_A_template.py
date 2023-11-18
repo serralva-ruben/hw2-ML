@@ -22,9 +22,10 @@ def get_best_arm( pastRewards, actions ):
     for action in actions:
         #TODO:
         #step1: find in the history the index of all experiments where "action" was performed
-        # tmp = ...
+        tmp = pastRewards[pastRewards[:, 0] == action]
         #step2: compute the mean reward over these experiments
-        # avg = ...
+        if len(tmp) > 0:
+            avg = np.mean(tmp[:, 1])
         if avg > bestAvg:
             bestAvg = avg
             bestArm = action
@@ -56,13 +57,20 @@ pastRewards = np.zeros( ( nb_trials, 2 ) )
 plt.xlabel( "Trials" )
 plt.ylabel( "Avg Reward" )
 
+#Exploration rate
+epsilon = 0.1
 best_arm=0
 
 for i in range( nb_trials ):
     # TODO: use the "random.random()" and "get_best_arm(...)" methods to implement the epsilon-greedy strategy
     #best_arm = get_best_arm(...)  # Hint: use portion of pastRewards that has been set already     
-    choice = np.random.choice( nb_machines )
-    
+    if random.random() > epsilon:
+        # Exploit: Choose the best known arm
+        best_arm = get_best_arm(pastRewards[:i], range(nb_machines))
+        choice = best_arm
+    else:
+        # Explore: Choose a random arm
+        choice = np.random.choice(nb_machines)
     
     # pull the arm of machine with id [choice] and collect the wins
     reward = get_reward( arms[ choice ] )
