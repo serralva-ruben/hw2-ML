@@ -10,10 +10,10 @@ import numpy as np
 RENDER_MODE = "graphic"  # choose between "graphic" or text;  graphic mode needs the pygame package to be installed
 RENDER_FREQUENCY = 0.01  # output the game state at most every X seconds
 
-KNOW_OPTIMAL_REWARD = -13 # -1 -11 -1
+KNOW_OPTIMAL_REWARD = -13
 
-ALPHA = 0.15
-EPSILON = 0.15
+ALPHA = 0.95
+EPSILON = 0
 GAMMA = 0.9
 
 env = gym.make('CliffWalking-v0', render_mode = "rgb_array" if RENDER_MODE == "graphic" else "ansi") # initialize the game
@@ -138,7 +138,7 @@ def run_experiment(agent, episodes = 500):
     win_count, mute_output, rewards, optimal_reward_count = 0, True, [], 0
     
     for _ in range(episodes):
-        steps, reason, reward = run_episode(agent, muted=mute_output)
+        _, reason, reward = run_episode(agent, muted=mute_output)
         if reason == 1:
             if reward == KNOW_OPTIMAL_REWARD:
                 optimal_reward_count += 1
@@ -148,45 +148,73 @@ def run_experiment(agent, episodes = 500):
     best_reward = max(rewards)
     return average_reward, best_reward, win_count, rewards, optimal_reward_count
 
+def grid_search(env, episodes = 500):
+    best_metric = -float('inf')
+    best_alpha = 0
+    best_epsilon = 0
+
+    for alpha in np.arange(0, 1.05, 0.05):
+        for epsilon in np.arange(0, 1.05, 0.05):
+            print(f"Testing alpha: {alpha}, epsilon: {epsilon}")
+            agent = QLearningAgent(env.observation_space.n, env.action_space.n, alpha, epsilon, GAMMA)
+            metric_sum = 0
+
+            #We average out for 10 runs so we hget more stable results
+            for _ in range(10):
+                avg_reward, _, _, _, _ = run_experiment(agent, episodes)
+                metric_sum += avg_reward  # Using average the reward as the metric used to evaluate the performance
+
+            average_metric = metric_sum / 10
+            print(best_metric)
+            if average_metric > best_metric:
+                best_metric = average_metric
+                best_alpha = alpha
+                best_epsilon = epsilon
+
+    return best_alpha, best_epsilon, best_metric
+
 if __name__ == "__main__":
 
     EXPERIMENTS = 100
     EPISODES = 500
-    use_q_learning = True
-    agent = QLearningAgent(env.observation_space.n, env.action_space.n, ALPHA, EPSILON, GAMMA) if use_q_learning else ERPAgent()
-    #set to true to run the experiments multiple times, also see the quantity in the function run_experiments
-    #The default is 100 experiments as asked in the assignement
-    run_multiple_experiments = True
-
-    if run_multiple_experiments:
-        averages, bests, win_rate, optimal_reward_rate = run_experiments(agent, EXPERIMENTS, EPISODES)
-
-        print(f"Average Reward: {np.mean(averages)}")
-        print(f"Best Reward: {max(bests)}")
-        print(f"Average Times Goal Reached per Experiment: {win_rate}")
-        print(f"Average Times Optimal Reward Achieved per Experiment: {optimal_reward_rate}")
-
-        plt.scatter(range(EXPERIMENTS), averages, label='Average Reward')
-        plt.scatter(range(EXPERIMENTS), bests, label='Best Reward')
-        plt.xlabel('Experiment')
-        plt.ylabel('Reward')
-        plt.title('Rewards per Experiment')
-        plt.legend()
-        plt.show()
+    run_grid_search = False  # Set to False to use alpha and epsilon defined in the beginning
+    use_q_learning = True   # Set false to use erp
+    if run_grid_search:
+        best_alpha, best_epsilon, best_metric = grid_search(env)
+        print(f"Best alpha: {best_alpha}, Best epsilon: {best_epsilon}, Best metric: {best_metric}")
 
     else:
-        avg_reward, best_reward, total_wins, rewards = run_experiment(agent, EPISODES)
-
-        print(f"Average Reward: {avg_reward}")
-        print(f"Best Reward: {best_reward}")
-        print(f"Times Goal Reached: {total_wins}")
-
-        plt.scatter(range(EPISODES), rewards, label='Best Reward')
-        plt.xlabel('Episodes')
-        plt.ylabel('Reward')
-        plt.title('Rewards per Episode')
-        plt.legend()
-        plt.show()
+        agent = QLearningAgent(env.observation_space.n, env.action_space.n, ALPHA, EPSILON, GAMMA) if use_q_learning else ERPAgent()
+        run_multiple_experiments = True
         
+        if run_multiple_experiments:
+            averages, bests, win_rate, optimal_reward_rate = run_experiments(agent, EXPERIMENTS, EPISODES)
 
+            print(f"Average Reward: {np.mean(averages)}")
+            print(f"Best Reward: {max(bests)}")
+            print(f"Average Times Goal Reached per Experiment: {win_rate}")
+            print(f"Average Times Optimal Reward Achieved per Experiment: {optimal_reward_rate}")
+
+            plt.scatter(range(EXPERIMENTS), averages, label='Average Reward')
+            plt.scatter(range(EXPERIMENTS), bests, label='Best Reward')
+            plt.xlabel('Experiment')
+            plt.ylabel('Reward')
+            plt.title('Rewards per Experiment')
+            plt.legend()
+            plt.show()
+
+        else:
+            avg_reward, best_reward, total_wins, rewards = run_experiment(agent, EPISODES)
+
+            print(f"Average Reward: {avg_reward}")
+            print(f"Best Reward: {best_reward}")
+            print(f"Times Goal Reached: {total_wins}")
+
+            plt.scatter(range(EPISODES), rewards, label='Best Reward')
+            plt.xlabel('Episodes')
+            plt.ylabel('Reward')
+            plt.title('Rewards per Episode')
+            plt.legend()
+            plt.show()
+        
 env.close() # end the game
