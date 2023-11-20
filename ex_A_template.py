@@ -32,6 +32,17 @@ def get_best_arm( pastRewards, actions ):
     #print("bestArm:", bestArm,  " avg:", bestAvg )
     return bestArm
 
+def run_experiment(arms, nb_trials):
+    np.random.seed()  # Ensure randomness for each experiment
+    pastRewards = np.zeros((nb_trials, 2))
+    for i in range(nb_trials):
+        choice = np.random.choice(nb_machines)
+        reward = get_reward(arms[choice])
+        pastRewards[i] = (choice, reward)
+    runningMean = np.mean(pastRewards[:, 1])
+    best_arm = get_best_arm(pastRewards, range(nb_machines))
+    return runningMean, best_arm
+
 nb_machines = 10
 # set fixed seed as machines' probabilities do not change over experiments
 np.random.seed(0)
@@ -59,7 +70,9 @@ plt.ylabel( "Avg Reward" )
 
 #Exploration rate
 epsilon = 0.1
-best_arm=0
+
+#Number of experiments to run
+num_experiments = 100
 
 for i in range( nb_trials ):
     # TODO: use the "random.random()" and "get_best_arm(...)" methods to implement the epsilon-greedy strategy
