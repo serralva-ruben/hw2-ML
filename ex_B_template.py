@@ -10,23 +10,24 @@ import numpy as np
 RENDER_MODE = "graphic"  # choose between "graphic" or text;  graphic mode needs the pygame package to be installed
 RENDER_FREQUENCY = 0.01  # output the game state at most every X seconds
 
-KNOW_OPTIMAL_REWARD = -13
+KNOW_OPTIMAL_REWARD = -13 #we know that the optimal reward is -13 because each step without falling has a reward of -1, and since the shortest path takes 13 steps, that means that best possible reward if -13
 
 ALPHA = 0.95
 EPSILON = 0
 GAMMA = 0.9
 
-env = gym.make('CliffWalking-v0', render_mode = "rgb_array" if RENDER_MODE == "graphic" else "ansi") # initialize the game
+env = gym.make('CliffWalking-v0', render_mode = "rgb_array" if RENDER_MODE == "graphic" else "ansi") # environment setup
 
+#agent that uses Equiprobable Random Policy
 class ERPAgent:
     def select_action(self, _):
-        # Ignore the state, select an action with equal probability
+        #Since our actions are represented as integers from 0 to 3, we generate a random integer between 0 and 3
         return np.random.choice(4)
 
     def update(self, old_state, action, reward, new_state):
         # The ERP Agent doesn't learn, so there's no need for an update
         pass
-
+#Agent that uses QLearning
 class QLearningAgent:
     def __init__(self, state_space_size, action_space_size, alpha, epsilon, gamma):
         self.alpha = alpha
@@ -64,6 +65,7 @@ actions = {
     3: "left"
 }
 
+#game rendering related code
 def display_game(env, wait_time_s = RENDER_FREQUENCY):
     if RENDER_MODE == "graphic":
         img = env.render()  # show the current state of the game (the environment)
@@ -82,6 +84,7 @@ def display_game(env, wait_time_s = RENDER_FREQUENCY):
 display_game.plt_im = None
 
 ## Returns the number of steps taken and the ending reason (-1 if fallen off, 0 if survived but out of steps, 1 if reached goal)
+## runs a single episode
 def run_episode(agent, max_steps = 1000, muted = False):
     observation, info = env.reset() # restart the game
     total_reward = 0
@@ -133,7 +136,7 @@ def run_experiments(agent, experiments = 100, episodes = 500):
         win_counts += wins
         optimal_reward_counts += optimal_reward_count
     return averages, bests, win_counts/experiments, optimal_reward_counts/experiments
-
+#run single experiment
 def run_experiment(agent, episodes = 500):
     win_count, mute_output, rewards, optimal_reward_count = 0, True, [], 0
     
@@ -147,12 +150,12 @@ def run_experiment(agent, episodes = 500):
     average_reward = sum(rewards) / episodes
     best_reward = max(rewards)
     return average_reward, best_reward, win_count, rewards, optimal_reward_count
-
+#perform grid search to find the best alpha and epsilon
 def grid_search(env, episodes = 500):
     best_metric = -float('inf')
     best_alpha = 0
     best_epsilon = 0
-
+    #we test the agent for every alpha and epsilon combination in [0,1] with steps of 0.05 and we compare the performance of the average of 10 runs with every epsilon alpha combination to find the best
     for alpha in np.arange(0, 1.05, 0.05):
         for epsilon in np.arange(0, 1.05, 0.05):
             print(f"Testing alpha: {alpha}, epsilon: {epsilon}")
@@ -162,10 +165,11 @@ def grid_search(env, episodes = 500):
             #We average out for 10 runs so we hget more stable results
             for _ in range(10):
                 avg_reward, _, _, _, _ = run_experiment(agent, episodes)
-                metric_sum += avg_reward  # Using average the reward as the metric used to evaluate the performance
-
+                metric_sum += avg_reward  # Using the reward as the metric used to evaluate the performance
+            #after adding the 10 rewards obtained we divide by 10 to get an average
             average_metric = metric_sum / 10
             print(best_metric)
+            #if the average metric we got for this combination is better than the best combination we found before, we replace the alpha and epsilon
             if average_metric > best_metric:
                 best_metric = average_metric
                 best_alpha = alpha
@@ -177,8 +181,8 @@ if __name__ == "__main__":
 
     EXPERIMENTS = 100
     EPISODES = 500
-    run_grid_search = False  # Set to False to use alpha and epsilon defined in the beginning
-    use_q_learning = True   # Set false to use erp
+    run_grid_search = False  # Set to False to use alpha and epsilon defined in the beginning otherwise it will perform the grid search
+    use_q_learning = True   # Set false to use ERP
     if run_grid_search:
         best_alpha, best_epsilon, best_metric = grid_search(env)
         print(f"Best alpha: {best_alpha}, Best epsilon: {best_epsilon}, Best metric: {best_metric}")
